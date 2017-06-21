@@ -16,12 +16,12 @@ init(Req0, Opts) ->
 	Method	= cowboy_req:method(Req0),
 	MapQs	= maps:from_list(cowboy_req:parse_qs(Req0)),
 	ApiReq	= #apireq{	
-						url		= "/bsmsc-" ++ string:to_lower(binary:bin_to_list(  maps:get(<<"orgname">>, MapQs, undefined) )) ++ "-*/entity_state/_search",
-						name	= maps:get( <<"name">>,		MapQs, undefined ),
-						orgname = maps:get( <<"orgname">>,	MapQs, undefined ),
-						from	= maps:get( <<"from">>,		MapQs, undefined ),
-						to		= maps:get( <<"to">>,		MapQs, undefined ),
-						rsm		= maps:get( <<"rsm">>,		MapQs, undefined )
+						url = "/bsmsc-" ++ string:to_lower(binary:bin_to_list(  maps:get(<<"orgname">>, MapQs, undefined) )) ++ "-*/entity_state/_search",
+						name = maps:get( <<"name">>, MapQs, undefined ),
+						orgname = maps:get( <<"orgname">>, MapQs, undefined ),
+						from = maps:get( <<"from">>, MapQs, undefined ),
+						to = maps:get( <<"to">>, MapQs, undefined ),
+						rsm = maps:get( <<"rsm">>, MapQs, undefined )
 				},
 	Req	= handle_api(Method, ApiReq, Req0),
 	{ok, Req, Opts}.
