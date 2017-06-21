@@ -1,0 +1,11 @@
+{application,web_api,
+             [{description,"An OTP application"},
+              {vsn,"1.0"},
+              {registered,[]},
+              {mod,{web_api_app,[]}},
+              {applications,[kernel,stdlib,cowboy,espool]},
+              {env,[]},
+              {modules,[api_handler,web_api_app,web_api_sup]},
+              {maintainers,[]},
+              {licenses,["Apache 2.0"]},
+              {links,[]}]}.

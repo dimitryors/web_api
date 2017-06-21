@@ -1,0 +1,19 @@
+{application, espool, [
+    {description, "An elasticsearch api pool application"},
+    {vsn, "1.0"},
+    {applications, [kernel, stdlib, sasl, crypto, ssl, inets, poolboy]},
+    {modules, [espool, espool_worker]},
+    {registered, [espool]},
+    {mod, {espool, []}},
+    {env, [
+        {pools, [
+            {pool1, [
+                {size, 5},
+                {max_overflow, 20}
+			], [
+                {hostname, "http://localhost"},
+                {port, "9200"}
+            ]}
+        ]}
+    ]}
+]}.
