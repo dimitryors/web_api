@@ -1,21 +1,21 @@
 -module(elastic_lib).
--export([getElasticRequest/1, parseEntity/1, parseService/1, getRsmData/1]).
+-export([getElasticRequest/1, groupEntityByType/1, parseService/1, getRsmData/1]).
 
 %%
 % GA Main Dashboard
 %%
-parseEntity({EntityList}) ->
-        parseEntity({EntityList, []});
-parseEntity({[EntityListHead|EntityListTail], Acc}) ->
+groupEntityByType({EntityList}) ->
+        groupEntityByType({EntityList, []});
+groupEntityByType({[EntityListHead|EntityListTail], Acc}) ->
         {[ _Index, _Type, _Id, _Score, {<<"_source">>, {[ _Organization, _Name, _Timestamp, Img, Color, _Service, _IdInSrc, _Appid, _Appgroup, Severity, Type, _Events]} }]} = EntityListHead,
         case lists:member(Type, [ TypeType || {[ TypeType, _Severity, _Img, _Color ]} <- Acc ] ) of
                 true  -> [ EntityB ] = [ {[ TypeB, SeverityB, ImgB, ColorB ]} || {[ TypeB, SeverityB, ImgB, ColorB ]} <- Acc, TypeB =:= Type ],
                          ListWithoutType = lists:delete(EntityB, Acc),
                          EntityMax = lists:max([ {[ Type, Severity, Img, Color ]}, EntityB]),
-                         parseEntity({ EntityListTail, [ EntityMax | ListWithoutType ] });
-                false -> parseEntity({ EntityListTail, [ {[ Type, Severity, Img, Color ]} | Acc] })
+                         groupEntityByType({ EntityListTail, [ EntityMax | ListWithoutType ] });
+                false -> groupEntityByType({ EntityListTail, [ {[ Type, Severity, Img, Color ]} | Acc] })
         end;
-parseEntity({[], Acc}) -> Acc.
+groupEntityByType({[], Acc}) -> Acc.
 %%
 % GA parse Service
 %%
@@ -35,7 +35,7 @@ getRsmData({Url, LastTs, [ServicesHead|ServicesTail], Acc }) ->
 	EntityFilteredReq = getElasticRequest({entity_filtered, ServicesHead, LastTs }),
 	EntityFilteredReply = espool:es_post(pool1, Url, EntityFilteredReq ),
 	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
-	Service = {[ { ServicesHead, parseEntity({Filtered}) } ]},
+	Service = {[ { ServicesHead, groupEntityByType({Filtered}) } ]},
         getRsmData({Url, LastTs, ServicesTail, [ Service | Acc  ] });
 getRsmData({Url, LastTs, [], Acc }) -> Acc.
 

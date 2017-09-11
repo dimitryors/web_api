@@ -122,8 +122,8 @@ handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, _Rsm, _Gran
 	Services = elastic_lib:parseService({ ServiceFiltered }),
 
 	%% Get Entity By Service
-	Data = elastic_lib:getRsmData({Url, LastTs, Services}),
-	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Data), Req);
+	GroupedByType = elastic_lib:getRsmData({Url, LastTs, Services}),
+	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(GroupedByType), Req);
 	    
 %% Packetbeat Requests
 % handle_api(<<"GET">>, {apireq, <<"packetbeat">>, _Type, _OrgName, From, To, _Rsm, _Granularity, Agg1, _Agg2, Columns1, _Columns2, _Url }, Req) when From =/= undefined, To =/= undefined, Agg1 =/= undefined, Columns1 =/= undefined ->
