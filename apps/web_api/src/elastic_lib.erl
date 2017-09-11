@@ -35,7 +35,7 @@ getRsmData({Url, LastTs, [ServicesHead|ServicesTail], Acc }) ->
 	EntityFilteredReq = getElasticRequest({entity_filtered, ServicesHead, LastTs }),
 	EntityFilteredReply = espool:es_post(pool1, Url, EntityFilteredReq ),
 	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
-	Service = {[ { ServicesHead, groupEntityByType({Filtered}) } ]},
+        Service = {[ { <<"service">>, ServicesHead }, { <<"ke">>, groupEntityByType({Filtered}) } ]},
         getRsmData({Url, LastTs, ServicesTail, [ Service | Acc  ] });
 getRsmData({Url, LastTs, [], Acc }) -> Acc.
 
