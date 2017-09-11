@@ -120,7 +120,6 @@ handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, _Rsm, _Gran
 	ServiceFilteredReply = espool:es_post(pool1, Url, ServiceFilteredReq ),
 	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, ServiceFiltered }]}}]} = jiffy:decode( ServiceFilteredReply ),
 	Services = elastic_lib:parseService({ ServiceFiltered }),
-
 	%% Get Entity By Service
 	GroupedByType = elastic_lib:getRsmData({Url, LastTs, Services}),
 	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(GroupedByType), Req);
