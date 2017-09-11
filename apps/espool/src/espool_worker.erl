@@ -25,7 +25,7 @@ handle_call({post, Url, Query}, _From, #state{conn=Conn}=State) ->
 	Type = "",
 	Body = jiffy:encode(Query),
 	HTTPOptions = [],
-	Options = [],
+    Options = [],
 	{ok, {{_Version, 200, _ReasonPhrase}, _Headers, BodyRequest}} = httpc:request(Method, {URL, Header, Type, Body}, HTTPOptions, Options),
     {reply, BodyRequest, State};
 handle_call(_Request, _From, State) ->

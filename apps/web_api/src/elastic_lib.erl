@@ -1,7 +1,47 @@
 -module(elastic_lib).
--export([getElasticRequest/1]).
+-export([getElasticRequest/1, parseEntity/1, parseService/1, getRsmData/1]).
 
+%%
+% GA Main Dashboard
+%%
+parseEntity({EntityList}) ->
+        parseEntity({EntityList, []});
+parseEntity({[EntityListHead|EntityListTail], Acc}) ->
+        {[ _Index, _Type, _Id, _Score, {<<"_source">>, {[ _Organization, _Name, _Timestamp, Img, Color, _Service, _IdInSrc, _Appid, _Appgroup, Severity, Type, _Events]} }]} = EntityListHead,
+        case lists:member(Type, [ TypeType || {[ TypeType, _Severity, _Img, _Color ]} <- Acc ] ) of
+                true  -> [ EntityB ] = [ {[ TypeB, SeverityB, ImgB, ColorB ]} || {[ TypeB, SeverityB, ImgB, ColorB ]} <- Acc, TypeB =:= Type ],
+                         ListWithoutType = lists:delete(EntityB, Acc),
+                         EntityMax = lists:max([ {[ Type, Severity, Img, Color ]}, EntityB]),
+                         parseEntity({ EntityListTail, [ EntityMax | ListWithoutType ] });
+                false -> parseEntity({ EntityListTail, [ {[ Type, Severity, Img, Color ]} | Acc] })
+        end;
+parseEntity({[], Acc}) -> Acc.
+%%
+% GA parse Service
+%%
+parseService({Services}) ->
+        parseService({Services, []});
+parseService({[ServicesHead|ServicesTail], Acc}) ->
+        {[_Index, _Type, _Id, _Score, {<<"_source">>, {[ _Organization, {SvcId, SvcName}, _Timestamp, _Img, _Color, _Service, _IdInSrc, _Appid, _Appgroup, _Severity, _TypeType, _Events ]}}]} = ServicesHead,
+        parseService({ ServicesTail, [ SvcName | Acc ] });
+parseService({[], Acc}) -> Acc.
+%%
+% GA Get RSM for each service
+%%
+getRsmData({Url, LastTs, Services}) ->
+        getRsmData({Url, LastTs, Services, [] });
+getRsmData({Url, LastTs, [ServicesHead|ServicesTail], Acc }) ->
+        %% Get Entity By Service
+	EntityFilteredReq = getElasticRequest({entity_filtered, ServicesHead, LastTs }),
+	EntityFilteredReply = espool:es_post(pool1, Url, EntityFilteredReq ),
+	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
+	Service = {[ { ServicesHead, parseEntity({Filtered}) } ]},
+        getRsmData({Url, LastTs, ServicesTail, [ Service | Acc  ] });
+getRsmData({Url, LastTs, [], Acc }) -> Acc.
 
+%%
+% Requests to Elasticsearch
+%%
 getElasticRequest({last_ts}) ->
                 #{
                                 <<"size">> => 0,
@@ -451,3 +491,9 @@ getElasticRequest({packetbeat_agg_data, From, To, Agg1, Columns1, Agg2, Columns2
 
         };
 getElasticRequest(_) -> undefined.
+
+%% TEST EXAMPLE
+%
+% Query = #{<<"size">> => 1}.
+% httpc:request(post, {"http://localhost:9200/packetbeat-*/_search", [], "", jiffy:encode(Query)}, [], []).
+%
