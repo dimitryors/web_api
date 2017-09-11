@@ -21,6 +21,7 @@
 init(Req0, Opts) ->
 	Method	= cowboy_req:method(Req0),
 	MapQs	= maps:from_list(cowboy_req:parse_qs(Req0)),
+	% io:format("~n", MapQs),
 	ApiReq	= #apireq{
 				name = maps:get( <<"name">>, MapQs, undefined ),	
 				type = maps:get( <<"type">>, MapQs, undefined ),
@@ -35,6 +36,7 @@ init(Req0, Opts) ->
 				columns2 = maps:get( <<"columns2">>, MapQs, undefined ),
 				url = "/bsmsc-" ++ string:to_lower(binary:bin_to_list(  maps:get(<<"orgname">>, MapQs, <<"orgname">>) )) ++ "-*/entity_state/_search"
 			},
+	% io:format("~n", ApiReq),
 	Req = handle_api(Method, ApiReq, Req0),
 	{ok, Req, Opts}.
 
@@ -107,14 +109,30 @@ handle_api(<<"GET">>, {apireq, <<"heatmap">>, <<"node">>, OrgName, From, To, Rsm
         HeatmapNodeReply =  espool:es_post(pool1, Url, HeatmapNodeReq ),
         {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, Aggregations } ]} = jiffy:decode( HeatmapNodeReply ),
         cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
-%% Histogram request
-handle_api(<<"GET">>, {apireq, <<"packetbeat">>, _Type, _OrgName, From, To, _Rsm, _Granularity, Agg1, _Agg2, Columns1, _Columns2, _Url }, Req) when From =/= undefined, To =/= undefined, Agg1 =/= undefined, Columns1 =/= undefined ->
-        PacketbeatUrl = "/packetbeat-*/_search",
-	PacketbeatReq = elastic_lib:getElasticRequest({packetbeat_request, From, To, Agg1, Columns1}),
-        PacketbeatReply = espool:es_post(pool1, PacketbeatUrl, PacketbeatReq ),
-	io:format("~n", PacketbeatReply),
-        {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, Aggregations } ]} = jiffy:decode( PacketbeatReply ),
-        cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
+%% GA
+handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, _Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined ->
+	%% Get Last Time
+	LastTsReq = elastic_lib:getElasticRequest({last_ts}),
+	LastTsReply = espool:es_post(pool1, Url, LastTsReq ),
+	{[{_,_}, {_,_}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_,{[{<<"max_ts">>, {[{_,_}, {<<"value_as_string">>, LastTs }]}}]}}]} = jiffy:decode( LastTsReply ),
+	%% Get Services
+	ServiceFilteredReq = elastic_lib:getElasticRequest({services_filtered, LastTs}),
+	ServiceFilteredReply = espool:es_post(pool1, Url, ServiceFilteredReq ),
+	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, ServiceFiltered }]}}]} = jiffy:decode( ServiceFilteredReply ),
+	Services = elastic_lib:parseService({ ServiceFiltered }),
+
+	%% Get Entity By Service
+	Data = elastic_lib:getRsmData({Url, LastTs, Services}),
+	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Data), Req);
+	    
+%% Packetbeat Requests
+% handle_api(<<"GET">>, {apireq, <<"packetbeat">>, _Type, _OrgName, From, To, _Rsm, _Granularity, Agg1, _Agg2, Columns1, _Columns2, _Url }, Req) when From =/= undefined, To =/= undefined, Agg1 =/= undefined, Columns1 =/= undefined ->
+%         PacketbeatUrl = "/packetbeat-*/_search",
+% 	PacketbeatReq = elastic_lib:getElasticRequest({packetbeat_request, From, To, Agg1, Columns1}),
+% 	io:format("~n", PacketbeatReq),
+%         PacketbeatReply = espool:es_post(pool1, PacketbeatUrl, PacketbeatReq ),
+%         {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, Aggregations } ]} = jiffy:decode( PacketbeatReply ),
+%         cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
 
 handle_api(_, _, Req) ->
 	%% Method not allowed.
