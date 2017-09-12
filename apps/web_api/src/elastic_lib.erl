@@ -65,6 +65,19 @@ getElasticRequest({entity_filtered, RsmName, LastTs }) ->
                                 }
                         }
                 };
+getElasticRequest({entity_filtered, RsmName, Type, LastTs }) ->
+                #{
+                        <<"size">> => 10000,
+                        <<"query">> => #{
+                                <<"bool">> => #{
+                                     <<"must">> => [
+                                                #{ <<"match_phrase">> => #{ <<"service">> => RsmName } },
+                                                #{ <<"match">> => #{ <<"type">> => Type  } },
+                                                #{ <<"match">> => #{ <<"timestamp">> => LastTs  } }
+                                     ]
+                                }
+                        }
+                };
 getElasticRequest({relation}) ->
         	#{
 			<<"size">> => 10000

@@ -42,12 +42,21 @@ init(Req0, Opts) ->
 
 handle_api(<<"GET">>, undefined, Req) ->
 	cowboy_req:reply(400, #{}, <<"Missing parameter name.">>, Req);
-%% Entity
+%% Entity By RSM
 handle_api(<<"GET">>, {apireq, <<"entity">>, _Type, OrgName, _From, _To, Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined, Rsm =/= undefined ->
 	LastTsReq = elastic_lib:getElasticRequest({last_ts}),
 	LastTsReply = espool:es_post(pool1, Url, LastTsReq ),
 	{[{_,_}, {_,_}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_,{[{<<"max_ts">>, {[{_,_}, {<<"value_as_string">>, LastTs }]}}]}}]} = jiffy:decode( LastTsReply ),
 	EntityFilteredReq = elastic_lib:getElasticRequest({entity_filtered, Rsm, LastTs }),
+	EntityFilteredReply = espool:es_post(pool1, Url, EntityFilteredReq ),
+	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
+    	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Filtered), Req);
+%% Entity By RSM and Type
+handle_api(<<"GET">>, {apireq, <<"entity_type">>, Type, OrgName, _From, _To, Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined, Rsm =/= undefined, Type =/= undefined ->
+	LastTsReq = elastic_lib:getElasticRequest({last_ts}),
+	LastTsReply = espool:es_post(pool1, Url, LastTsReq ),
+	{[{_,_}, {_,_}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_,{[{<<"max_ts">>, {[{_,_}, {<<"value_as_string">>, LastTs }]}}]}}]} = jiffy:decode( LastTsReply ),
+	EntityFilteredReq = elastic_lib:getElasticRequest({entity_filtered, Rsm, Type, LastTs }),
 	EntityFilteredReply = espool:es_post(pool1, Url, EntityFilteredReq ),
 	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
     	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Filtered), Req);
