@@ -228,13 +228,13 @@ getElasticRequest({kpi_hour, From, To}) ->
                                 }
                         }
                 };
-getElasticRequest({kpi_default, From, To}) ->
+getElasticRequest({kpi_default, From, To, Type}) ->
 		#{
                         <<"size">> => 0,
                         <<"query">> => #{
                                 <<"bool">> => #{
                                         <<"must">> => [
-                                                #{ <<"match">> => #{ <<"type">> => <<"service">>  } },
+                                                #{ <<"match">> => #{ <<"type">> => Type  } },
                                                 #{ <<"range">> => #{ <<"timestamp">> => #{ <<"gt">> => From, <<"lt">> => To } } }
                                         ]
                                 }

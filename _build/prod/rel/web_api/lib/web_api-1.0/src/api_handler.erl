@@ -101,8 +101,8 @@ handle_api(<<"GET">>, {apireq, <<"kpi">>, _Type, OrgName, From, To, _Rsm, <<"hou
         {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, Aggregations } ]} = jiffy:decode( KpiHourReply ),
         cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
 %% Kpi Default
-handle_api(<<"GET">>, {apireq, <<"kpi">>, _Type, OrgName, From, To, _Rsm, undefined, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined, From =/= undefined, To =/= undefined ->
-        KpiReq = elastic_lib:getElasticRequest({kpi_default, From, To}),
+handle_api(<<"GET">>, {apireq, <<"kpi">>, Type, OrgName, From, To, _Rsm, undefined, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined, From =/= undefined, To =/= undefined, Type =/= undefined ->
+        KpiReq = elastic_lib:getElasticRequest({kpi_default, From, To, Type}),
         KpiReply =  espool:es_post(pool1, Url, KpiReq ),
         {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, Aggregations } ]} = jiffy:decode( KpiReply ),
         cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
