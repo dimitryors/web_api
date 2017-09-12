@@ -59,7 +59,13 @@ handle_api(<<"GET">>, {apireq, <<"entity_type">>, Type, OrgName, _From, _To, Rsm
 	EntityFilteredReq = elastic_lib:getElasticRequest({entity_filtered, Rsm, Type, LastTs }),
 	EntityFilteredReply = espool:es_post(pool1, Url, EntityFilteredReq ),
 	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
-    	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Filtered), Req);
+        cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Filtered), Req);
+%% Entity Type Grouped
+handle_api(<<"GET">>, {apireq, <<"entity_type_grouped">>, _Type, OrgName, _From, _To, _Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined ->
+	EntityTypeReq = elastic_lib:getElasticRequest({entity_type_grouped}),
+	EntityTypeReply = espool:es_post(pool1, Url, EntityTypeReq ),
+	{[_Took, _Timed_out, _ShardsInfo, _Hits, {<<"aggregations">>, {[{<<"group_by_state">>, {[ _Doc_count_error_upper_bound, _Sum_other_doc_count, {<<"buckets">>, Result } ]}}]} }]} = jiffy:decode( EntityTypeReply ),
+	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Result), Req);
 %% Relation
 handle_api(<<"GET">>, {apireq, <<"relation">>, _Type, _OrgName, _From, _To, _Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, _Url }, Req) ->
         RelationUrl = "/bsmsc1/relation/_search",
@@ -132,16 +138,6 @@ handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, _Rsm, _Gran
 	%% Get Entity By Service
 	GroupedByType = elastic_lib:getRsmData({Url, LastTs, Services}),
 	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(GroupedByType), Req);
-	    
-%% Packetbeat Requests
-% handle_api(<<"GET">>, {apireq, <<"packetbeat">>, _Type, _OrgName, From, To, _Rsm, _Granularity, Agg1, _Agg2, Columns1, _Columns2, _Url }, Req) when From =/= undefined, To =/= undefined, Agg1 =/= undefined, Columns1 =/= undefined ->
-%         PacketbeatUrl = "/packetbeat-*/_search",
-% 	PacketbeatReq = elastic_lib:getElasticRequest({packetbeat_request, From, To, Agg1, Columns1}),
-% 	io:format("~n", PacketbeatReq),
-%         PacketbeatReply = espool:es_post(pool1, PacketbeatUrl, PacketbeatReq ),
-%         {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, Aggregations } ]} = jiffy:decode( PacketbeatReply ),
-%         cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
-
 handle_api(_, _, Req) ->
 	%% Method not allowed.
 	cowboy_req:reply(405, Req).

@@ -94,6 +94,17 @@ getElasticRequest({services_filtered, LastTs}) ->
 				}
 			}
   		};
+getElasticRequest({entity_type_grouped}) ->
+        	#{
+			<<"size">> => 0,
+			<<"aggs">> => #{
+				<<"group_by_state">> => #{
+					<<"terms">> => #{
+                                                <<"field">> => <<"type">>
+                                        }
+				}
+			}
+  		};
 getElasticRequest({kpi_week, From, To}) ->
                 #{
                         <<"size">> => 0,
