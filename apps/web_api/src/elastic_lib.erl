@@ -23,7 +23,7 @@ groupEntityByType({[EntityListHead|EntityListTail], Acc}) ->
                          % Compare New Entity and Old Entity to choose max severity
                          {[ EntityMaxType, EntityMaxSeverity, EntityMaxImg, EntityMaxColor, _MembersAvailability ]} = lists:max([ EntityA, EntityB ]),
                          % Availability by Severity
-                         EntityMax = {[  EntityMaxType, EntityMaxSeverity, EntityMaxImg, EntityMaxColor, [ MembersAvailabilityA | MembersAvailabilityB ] ]},
+                         EntityMax = {[  EntityMaxType, EntityMaxSeverity, EntityMaxImg, EntityMaxColor, [ availabilityBySeverity(Severity) | MembersAvailabilityB ] ]},
                          % Loop groupEntityByType
                          groupEntityByType({ EntityListTail, [ EntityMax | ListWithoutType ] });
                 false ->
