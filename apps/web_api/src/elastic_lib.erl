@@ -8,21 +8,43 @@ groupEntityByType({EntityList}) ->
         groupEntityByType({EntityList, []});
 groupEntityByType({[EntityListHead|EntityListTail], Acc}) ->
         {[ _Index, _Type, _Id, _Score, {<<"_source">>, {[ _Organization, _Name, _Timestamp, Img, Color, _Service, _IdInSrc, _Appid, _Appgroup, Severity, Type, _Events]} }]} = EntityListHead,
-        case lists:member(Type, [ TypeType || {[ TypeType, _Severity, _Img, _Color ]} <- Acc ] ) of
-                true  -> [ EntityB ] = [ {[ TypeB, SeverityB, ImgB, ColorB ]} || {[ TypeB, SeverityB, ImgB, ColorB ]} <- Acc, TypeB =:= Type ],
+        % Calc EntityA MembersAvailability value
+        MembersAvailabilityA = availabilityBySeverity(Severity),
+        % Declare EntityA 
+        EntityA = {[ Type, Severity, Img, Color, [ MembersAvailabilityA ] ]},
+
+        case lists:member(Type, [ TypeType || {[ TypeType, _Severity, _Img, _Color, _MembersAvailability ]} <- Acc ] ) of
+                true  -> 
+                         % Get entity with current type
+                         [ EntityB ] = [ {[ TypeB, SeverityB, ImgB, ColorB, MembersAvailabilityB ]} || {[ TypeB, SeverityB, ImgB, ColorB, MembersAvailabilityB ]} <- Acc, TypeB =:= Type ],
+                         {[ _TypeB, _SeverityB, _ImgB, _ColorB, MembersAvailabilityB ]} = EntityB,
+                         % Delete entity with current type from Acc
                          ListWithoutType = lists:delete(EntityB, Acc),
-                         EntityMax = lists:max([ {[ Type, Severity, Img, Color ]}, EntityB]),
+                         % Compare New Entity and Old Entity to choose max severity
+                         {[ EntityMaxType, EntityMaxSeverity, EntityMaxImg, EntityMaxColor, _MembersAvailability ]} = lists:max([ EntityA, EntityB ]),
+                         % Availability by Severity
+                         EntityMax = {[  EntityMaxType, EntityMaxSeverity, EntityMaxImg, EntityMaxColor, [ MembersAvailabilityA | MembersAvailabilityB ] ]},
+                         % Loop groupEntityByType
                          groupEntityByType({ EntityListTail, [ EntityMax | ListWithoutType ] });
-                false -> groupEntityByType({ EntityListTail, [ {[ Type, Severity, Img, Color ]} | Acc] })
+                false ->
+                         groupEntityByType({ EntityListTail, [ EntityA | Acc] })
         end;
-groupEntityByType({[], Acc}) -> Acc.
+groupEntityByType({[], Acc}) -> 
+       [ {[ Type, Severity, Img, Color, {<<"MembersAvailability">>, lists:sum(MembersAvailability) / erlang:length(MembersAvailability) * 100 } ]} 
+                || {[ Type, Severity, Img, Color, MembersAvailability ]} <- Acc 
+                ].
+%%
+% GA Main Dashboard availabilityBySeverity
+%%
+availabilityBySeverity(Severity) when Severity == 5 -> 0;
+availabilityBySeverity(_Severity)                   -> 1.
 %%
 % GA parse Service
 %%
 parseService({Services}) ->
         parseService({Services, []});
 parseService({[ServicesHead|ServicesTail], Acc}) ->
-        {[_Index, _Type, _Id, _Score, {<<"_source">>, {[ _Organization, {SvcId, SvcName}, _Timestamp, _Img, _Color, _Service, _IdInSrc, _Appid, _Appgroup, _Severity, _TypeType, _Events ]}}]} = ServicesHead,
+        {[_Index, _Type, _Id, _Score, {<<"_source">>, {[ _Organization, {_SvcId, SvcName}, _Timestamp, _Img, _Color, _Service, _IdInSrc, _Appid, _Appgroup, _Severity, _TypeType, _Events ]}}]} = ServicesHead,
         parseService({ ServicesTail, [ SvcName | Acc ] });
 parseService({[], Acc}) -> Acc.
 %%
@@ -37,7 +59,7 @@ getRsmData({Url, LastTs, [ServicesHead|ServicesTail], Acc }) ->
 	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
         Service = {[ { <<"service">>, ServicesHead }, { <<"ke">>, groupEntityByType({Filtered}) } ]},
         getRsmData({Url, LastTs, ServicesTail, [ Service | Acc  ] });
-getRsmData({Url, LastTs, [], Acc }) -> Acc.
+getRsmData({_Url, _LastTs, [], Acc }) -> Acc.
 
 %%
 % Requests to Elasticsearch
