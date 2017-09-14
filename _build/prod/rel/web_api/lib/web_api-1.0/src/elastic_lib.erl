@@ -1,5 +1,5 @@
 -module(elastic_lib).
--export([getElasticRequest/1, groupEntityByType/1, parseService/1, getRsmData/1]).
+-export([getElasticRequest/1, groupEntityByType/1, parseService/1, getRsmData/1, availabilityBySeverity/1]).
 
 %%
 % GA Main Dashboard
@@ -30,14 +30,15 @@ groupEntityByType({[EntityListHead|EntityListTail], Acc}) ->
                          groupEntityByType({ EntityListTail, [ EntityA | Acc] })
         end;
 groupEntityByType({[], Acc}) -> 
-       [ {[ Type, Severity, Img, Color, {<<"MembersAvailability">>, lists:sum(MembersAvailability) / erlang:length(MembersAvailability) * 100 } ]} 
+        % lists:sum(MembersAvailability) / erlang:length(MembersAvailability) * 100
+       [ {[ Type, Severity, Img, Color, {<<"MembersAvlArr">>, MembersAvailability }, {<<"MembersAvlPct">>, lists:sum(MembersAvailability) / erlang:length(MembersAvailability) * 100 } ]} 
                 || {[ Type, Severity, Img, Color, MembersAvailability ]} <- Acc 
                 ].
 %%
 % GA Main Dashboard availabilityBySeverity
 %%
-availabilityBySeverity(Severity) when Severity > 4 -> 0;
-availabilityBySeverity(_Severity)                  -> 1.
+availabilityBySeverity(Severity) when Severity == 5 -> 0;
+availabilityBySeverity(_Severity)                   -> 1.
 %%
 % GA parse Service
 %%

@@ -20,7 +20,7 @@ start(_StartType, _StartArgs) ->
 			{"/json", api_handler, []}
 		]}
 	]),
-	{ok, _} = cowboy:start_clear(http, [{port, 7777}], #{
+	{ok, _} = cowboy:start_clear(http, [{port, 7779}], #{
 		env => #{dispatch => Dispatch}
     }),
     web_api_sup:start_link().
