@@ -36,8 +36,8 @@ groupEntityByType({[], Acc}) ->
 %%
 % GA Main Dashboard availabilityBySeverity
 %%
-availabilityBySeverity(Severity) when Severity == 5 -> 0;
-availabilityBySeverity(_Severity)                   -> 1.
+availabilityBySeverity(Severity) when Severity > 4 -> 0;
+availabilityBySeverity(_Severity)                  -> 1.
 %%
 % GA parse Service
 %%
