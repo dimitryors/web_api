@@ -1,5 +1,5 @@
 -module(elastic_lib).
--export([getElasticRequest/1, groupEntityByType/1, parseService/1, getRsmData/1, availabilityBySeverity/1]).
+-export([getElasticRequest/1, groupEntityByType/1, parseService/1, getRsmData/1]).
 
 %%
 % GA Main Dashboard
@@ -8,37 +8,33 @@ groupEntityByType({EntityList}) ->
         groupEntityByType({EntityList, []});
 groupEntityByType({[EntityListHead|EntityListTail], Acc}) ->
         {[ _Index, _Type, _Id, _Score, {<<"_source">>, {[ _Organization, _Name, _Timestamp, Img, Color, _Service, _IdInSrc, _Appid, _Appgroup, Severity, Type, _Events]} }]} = EntityListHead,
-        % Calc EntityA MembersAvailability value
-        MembersAvailabilityA = availabilityBySeverity(Severity),
         % Declare EntityA 
-        EntityA = {[ Type, Severity, Img, Color, [ MembersAvailabilityA ] ]},
+        EntityA = {[ Type, Severity, Img, Color ]},
 
-        case lists:member(Type, [ TypeType || {[ TypeType, _Severity, _Img, _Color, _MembersAvailability ]} <- Acc ] ) of
+        case lists:member(Type, [ TypeType || {[ TypeType, _Severity, _Img, _Color ]} <- Acc ] ) of
                 true  -> 
                          % Get entity with current type
-                         [ EntityB ] = [ {[ TypeB, SeverityB, ImgB, ColorB, MembersAvailabilityB ]} || {[ TypeB, SeverityB, ImgB, ColorB, MembersAvailabilityB ]} <- Acc, TypeB =:= Type ],
-                         {[ _TypeB, _SeverityB, _ImgB, _ColorB, MembersAvailabilityB ]} = EntityB,
+                         [ EntityB ] = [ {[ TypeB, SeverityB, ImgB, ColorB ]} || {[ TypeB, SeverityB, ImgB, ColorB ]} <- Acc, TypeB =:= Type ],
                          % Delete entity with current type from Acc
                          ListWithoutType = lists:delete(EntityB, Acc),
                          % Compare New Entity and Old Entity to choose max severity
-                         {[ EntityMaxType, EntityMaxSeverity, EntityMaxImg, EntityMaxColor, _MembersAvailability ]} = lists:max([ EntityA, EntityB ]),
-                         % Availability by Severity
-                         EntityMax = {[  EntityMaxType, EntityMaxSeverity, EntityMaxImg, EntityMaxColor, [ availabilityBySeverity(Severity) | MembersAvailabilityB ] ]},
+                         EntityMax = lists:max([ EntityA, EntityB ]),
                          % Loop groupEntityByType
                          groupEntityByType({ EntityListTail, [ EntityMax | ListWithoutType ] });
                 false ->
                          groupEntityByType({ EntityListTail, [ EntityA | Acc] })
         end;
-groupEntityByType({[], Acc}) -> 
+groupEntityByType({[], Acc}) -> Acc.
         % lists:sum(MembersAvailability) / erlang:length(MembersAvailability) * 100
-       [ {[ Type, Severity, Img, Color, {<<"MembersAvlArr">>, MembersAvailability }, {<<"MembersAvlPct">>, lists:sum(MembersAvailability) / erlang:length(MembersAvailability) * 100 } ]} 
-                || {[ Type, Severity, Img, Color, MembersAvailability ]} <- Acc 
-                ].
+%        [ {[ Type, Severity, Img, Color, {<<"MembersAvlArr">>, MembersAvailability }, {<<"MembersAvlPct">>, lists:sum(MembersAvailability) / erlang:length(MembersAvailability) * 100 } ]} 
+%                 || {[ Type, Severity, Img, Color, MembersAvailability ]} <- Acc 
+%                 ].
+
 %%
 % GA Main Dashboard availabilityBySeverity
 %%
-availabilityBySeverity(Severity) when Severity == 5 -> 0;
-availabilityBySeverity(_Severity)                   -> 1.
+% availabilityBySeverity(Severity) when Severity == 5 -> 0;
+% availabilityBySeverity(_Severity)                   -> 1.
 %%
 % GA parse Service
 %%
