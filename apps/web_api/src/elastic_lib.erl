@@ -1,5 +1,5 @@
 -module(elastic_lib).
--export([getElasticRequest/1, groupEntityByType/1, parseService/1, getRsmData/1]).
+-export([getElasticRequest/1, groupEntityByType/1, parseService/1, getRsmData/1, itos/1]).
 
 %%
 % GA Main Dashboard
@@ -50,13 +50,42 @@ parseService({[], Acc}) -> Acc.
 getRsmData({Url, LastTs, Services}) ->
         getRsmData({Url, LastTs, Services, [] });
 getRsmData({Url, LastTs, [ServicesHead|ServicesTail], Acc }) ->
-        %% Get Entity By Service
-	EntityFilteredReq = getElasticRequest({entity_filtered, ServicesHead, LastTs }),
-	EntityFilteredReply = espool:es_post(pool1, Url, EntityFilteredReq ),
-	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
-        Service = {[ { <<"service">>, ServicesHead }, { <<"ke">>, groupEntityByType({Filtered}) } ]},
+
+        %%%%
+        %% Service block
+        %%%
+        %% For each service get query for Status
+        EntityFilteredReq = getElasticRequest({entity_filtered, ServicesHead, LastTs }),
+        %% Execute each query for Status
+        EntityFilteredReply = espool:es_post(pool1, Url, EntityFilteredReq ),
+        %% Parse result of each query for Status
+        {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, Filtered }]}}]} = jiffy:decode( EntityFilteredReply ),
+
+        %%%%
+        %% Heatmap block
+        %%%
+        {{Year,Month,Day},{Hour,Minutes,_Seconds}} = calendar:local_time(),
+        From = binary:list_to_bin( itos(Year) ++ "-" ++ itos(Month) ++ "-" ++ itos(Day - 1) ++ " " ++ itos(Hour) ++ ":" ++ itos(Minutes) ++ ":59" ),
+        To   = binary:list_to_bin( itos(Year) ++ "-" ++ itos(Month) ++ "-" ++ itos(Day) ++ " " ++ itos(Hour) ++ ":" ++ itos(Minutes) ++ ":59"),
+
+        %% For each service get query for Heatmap
+        HeatmapApplicationReq = elastic_lib:getElasticRequest({heatmap_app_node, From, To, ServicesHead, <<"service">> }),
+        %% Execute each query for Heatmap
+        HeatmapApplicationReply =  espool:es_post(pool1, Url, HeatmapApplicationReq ),
+        %% Parse result of each query for Heatmap
+        {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, HeatmapAggregations } ]} = jiffy:decode( HeatmapApplicationReply ),
+
+        %%%%
+        %% Finish block
+        %%%
+        %% Put query result to json clause
+        Service = {[ { <<"service">>, ServicesHead }, { <<"ke">>, groupEntityByType({Filtered}) }, { <<"heatmap">>, HeatmapAggregations } ]},
         getRsmData({Url, LastTs, ServicesTail, [ Service | Acc  ] });
 getRsmData({_Url, _LastTs, [], Acc }) -> Acc.
+
+itos(Val) when Val < 10 -> "0" ++ erlang:integer_to_list(Val);
+itos(Val)               -> erlang:integer_to_list(Val).
+
 
 %%
 % Requests to Elasticsearch

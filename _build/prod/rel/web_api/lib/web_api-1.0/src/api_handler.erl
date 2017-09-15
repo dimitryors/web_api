@@ -114,7 +114,7 @@ handle_api(<<"GET">>, {apireq, <<"heatmap">>, undefined, OrgName, From, To, unde
         cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
 %% Heatmap Application & Node
 handle_api(<<"GET">>, {apireq, <<"heatmap">>, Type, OrgName, From, To, Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined, From =/= undefined, To =/= undefined, Rsm =/= undefined ->
-        HeatmapApplicationReq = elastic_lib:getElasticRequest({heatmap_app_node, From, To, Rsm, Type}),
+	HeatmapApplicationReq = elastic_lib:getElasticRequest({heatmap_app_node, From, To, Rsm, Type}),
         HeatmapApplicationReply =  espool:es_post(pool1, Url, HeatmapApplicationReq ),
         {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, Aggregations } ]} = jiffy:decode( HeatmapApplicationReply ),
         cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
