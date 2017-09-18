@@ -119,7 +119,7 @@ handle_api(<<"GET">>, {apireq, <<"heatmap">>, Type, OrgName, From, To, Rsm, _Gra
         {[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>,{[{_,_}, {_,_}, {<<"hits">>, _Filtered }]}}, {<<"aggregations">>, Aggregations } ]} = jiffy:decode( HeatmapApplicationReply ),
         cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Aggregations), Req);
 %% GA
-handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, _Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined ->
+handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined, Rsm =:= undefined ->
 	%% Get Last Time
 	LastTsReq = elastic_lib:getElasticRequest({last_ts}),
 	LastTsReply = espool:es_post(pool1, Url, LastTsReq ),
@@ -129,6 +129,17 @@ handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, _Rsm, _Gran
 	ServiceFilteredReply = espool:es_post(pool1, Url, ServiceFilteredReq ),
 	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, ServiceFiltered }]}}]} = jiffy:decode( ServiceFilteredReply ),
 	Services = elastic_lib:parseService({ ServiceFiltered }),
+	%% Get Entity By Service
+	GroupedByType = elastic_lib:getRsmData({Url, LastTs, Services}),
+	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(GroupedByType), Req);
+%% GA by Service
+handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined, Rsm =/= undefined ->
+	%% Get Last Time
+	LastTsReq = elastic_lib:getElasticRequest({last_ts}),
+	LastTsReply = espool:es_post(pool1, Url, LastTsReq ),
+	{[{_,_}, {_,_}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_,{[{<<"max_ts">>, {[{_,_}, {<<"value_as_string">>, LastTs }]}}]}}]} = jiffy:decode( LastTsReply ),
+	%% Get Services
+	Services = [ Rsm ],
 	%% Get Entity By Service
 	GroupedByType = elastic_lib:getRsmData({Url, LastTs, Services}),
 	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(GroupedByType), Req);
