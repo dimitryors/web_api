@@ -143,6 +143,23 @@ handle_api(<<"GET">>, {apireq, <<"ga">>, _Type, OrgName, _From, _To, Rsm, _Granu
 	%% Get Entity By Service
 	GroupedByType = elastic_lib:getRsmData({Url, LastTs, Services}),
 	cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(GroupedByType), Req);
+%% Entity By Service & BusinessFunction
+handle_api(<<"GET">>, {apireq, <<"entity_svc_func">>, _Type, OrgName, _From, _To, Rsm, _Granularity, _Agg1, _Agg2, _Columns1, _Columns2, Url }, Req) when OrgName =/= undefined, Rsm =/= undefined ->
+	LastTsReq = elastic_lib:getElasticRequest({last_ts}),
+	LastTsReply = espool:es_post(pool1, Url, LastTsReq ),
+	{[{_,_}, {_,_}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_, {[{_,_}, {_,_}, {_,_}]}}, {_,{[{<<"max_ts">>, {[{_,_}, {<<"value_as_string">>, LastTs }]}}]}}]} = jiffy:decode( LastTsReply ),
+	Type1 = <<"service">>,
+	Type2 = <<"application">>,
+	%% Get Service
+	SvcFilteredReq = elastic_lib:getElasticRequest({entity_filtered, Rsm, Type1, LastTs }),
+	SvcFilteredReply = espool:es_post(pool1, Url, SvcFilteredReq ),
+	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, FilteredSvc }]}}]} = jiffy:decode( SvcFilteredReply ),
+	%% Get Business Function
+	FuncFilteredReq = elastic_lib:getElasticRequest({entity_filtered, Rsm, Type2, LastTs }),
+	FuncFilteredReply = espool:es_post(pool1, Url, FuncFilteredReq ),
+	{[{_,_}, {_,_}, {_,{[{_,_}, {_,_}, {_,_}]}}, {<<"hits">>, {[{_,_}, {_,_}, {<<"hits">>, FilteredFunc }]}}]} = jiffy:decode( FuncFilteredReply ),
+	Result = FilteredSvc ++ FilteredFunc,
+        cowboy_req:reply(200, #{<<"content-type">> => <<"text/plain; charset=utf-8">>}, jiffy:encode(Result), Req);
 handle_api(_, _, Req) ->
 	%% Method not allowed.
 	cowboy_req:reply(405, Req).

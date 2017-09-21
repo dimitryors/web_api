@@ -25,7 +25,7 @@
 #
 # Usage: start [Data]
 #
-ROOTDIR=/opt/erlang/OTP
+ROOTDIR=/opt/erlang/lib/erlang
 
 if [ -z "$RELDIR" ]
 then
